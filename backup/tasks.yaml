@@ -1,0 +1,35 @@
+whale_analysis_task:
+  description: >
+    Analyze the trading positions and history of the Hyperliquid whale at address {wallet_address}.
+
+    Your analysis should include:
+    1. Current portfolio breakdown and asset allocation
+    2. Recent trading activity and position changes
+    3. Trading patterns and strategies identified
+    4. Timing analysis of entries and exits
+    5. Historical performance evaluation
+    6. Risk assessment of current positions
+    7. Recommendation on whether to follow this whale's trades
+
+    Provide a comprehensive report with actionable insights for traders who may be considering following this whale's trading decisions.
+  expected_output: >
+    A detailed whale trading analysis with insights on strategy and follow recommendations
+  agent: whale_analyst
+
+portfolio_analysis_task:
+  description: >
+    Analyze the wallet portfolio at address {wallet_address} in detail, comparing it to market benchmarks
+    and identifying strengths and weaknesses.
+
+    Your analysis should include:
+    1. Complete portfolio breakdown by asset type
+    2. Historical performance compared to market benchmarks
+    3. Risk assessment and diversification analysis
+    4. Key concentrations and exposure evaluation
+    5. Recommendations for portfolio optimization
+
+    Provide a comprehensive report with actionable insights for portfolio improvement.
+  expected_output: >
+    A detailed portfolio analysis with actionable recommendations for optimization
+  agent: whale_analyst
+  output_file: portfolio_report.md
