@@ -1,5 +1,6 @@
 """Tests for the Zerion client base functionality."""
 import pytest
+import base64
 from aiohttp import web
 from hyper_agent.zerion.client import ZerionClient
 from hyper_agent.zerion.constants import API_BASE_URL_ENV_VAR
@@ -17,16 +18,30 @@ def test_client_initialization_without_api_key():
         ZerionClient()
 
 def test_client_headers(zerion_api_key: str):
-    """Test client headers are correctly set."""
+    """Test client headers are correctly set with Basic Auth."""
     client = ZerionClient(api_key=zerion_api_key)
-    assert client.headers["Authorization"] == f"Bearer {zerion_api_key}"
+    # Create expected Basic Auth header
+    auth_string = f"{zerion_api_key}:"
+    auth_bytes = auth_string.encode('ascii')
+    base64_bytes = base64.b64encode(auth_bytes)
+    base64_auth = base64_bytes.decode('ascii')
+    expected_auth = f"Basic {base64_auth}"
+
+    assert client.headers["Authorization"] == expected_auth
     assert client.headers["Accept"] == "application/json"
 
 @pytest.mark.asyncio
 async def test_client_request(aiohttp_client, zerion_api_key: str):
-    """Test client makes correct API requests."""
+    """Test client makes correct API requests with Basic Auth."""
     async def handler(request):
-        assert request.headers["Authorization"] == f"Bearer {zerion_api_key}"
+        # Create expected Basic Auth header
+        auth_string = f"{zerion_api_key}:"
+        auth_bytes = auth_string.encode('ascii')
+        base64_bytes = base64.b64encode(auth_bytes)
+        base64_auth = base64_bytes.decode('ascii')
+        expected_auth = f"Basic {base64_auth}"
+
+        assert request.headers["Authorization"] == expected_auth
         assert request.headers["Accept"] == "application/json"
         return web.json_response({"status": "success"})
 
@@ -51,7 +66,7 @@ async def test_client_error_handling(aiohttp_client, zerion_api_key: str):
 
     zerion_client = ZerionClient(api_key=zerion_api_key)
     zerion_client.base_url = str(client.make_url(""))
-    with pytest.raises(Exception, match="API request failed: Not found"):
+    with pytest.raises(ValueError, match="API request failed: {'error': 'Not found'}"):
         await zerion_client._request("GET", "/test")
 
 @pytest.mark.asyncio
