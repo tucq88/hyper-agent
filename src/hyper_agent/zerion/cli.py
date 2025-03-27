@@ -12,12 +12,12 @@ from .constants import require_zerion_api_key
 
 
 @click.group()
-def zerion():
+def cli():
     """Zerion SDK CLI."""
     pass
 
 
-@zerion.group()
+@cli.group()
 def wallet():
     """Wallet-related commands."""
     pass
@@ -90,7 +90,7 @@ def portfolio(address: str):
     asyncio.run(_run())
 
 
-@zerion.group()
+@cli.group()
 def token():
     """Token-related commands."""
     pass
@@ -148,7 +148,7 @@ def transactions(token_id: str):
     asyncio.run(_run())
 
 
-@zerion.group()
+@cli.group()
 def protocol():
     """Protocol-related commands."""
     pass
@@ -207,4 +207,4 @@ def stats(protocol_id: str):
 
 
 if __name__ == "__main__":
-    zerion()
+    cli()

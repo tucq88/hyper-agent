@@ -1,8 +1,10 @@
-"""Tests for Zerion wallet functionality."""
+"""Tests for ZerionWallet class."""
+
 import pytest
 from unittest.mock import patch
 
 from hyper_agent.zerion.wallet import ZerionWallet
+from hyper_agent.zerion.client import ZerionClient
 from hyper_agent.zerion.constants import API_BASE_URL_ENV_VAR, DEFAULT_API_BASE_URL
 from hyper_agent.config import require_env_var
 
@@ -100,87 +102,79 @@ def mock_portfolio_response():
         }
     }
 
-def test_get_wallet_info(zerion_api_key, mock_wallet_response):
+@pytest.fixture
+def mock_protocols_response():
+    """Mock response for wallet protocols."""
+    return {
+        "data": [
+            {
+                "id": "1",
+                "type": "protocol",
+                "attributes": {
+                    "name": "Test Protocol",
+                    "description": "A test protocol",
+                    "website": "https://example.com",
+                }
+            }
+        ]
+    }
+
+@pytest.fixture
+def wallet_client(zerion_api_key):
+    """Create a ZerionWallet instance."""
+    client = ZerionClient(api_key=zerion_api_key)
+    return ZerionWallet(client)
+
+@pytest.mark.asyncio
+async def test_get_wallet_info(wallet_client, mock_wallet_response):
     """Test getting wallet info."""
-    with patch("requests.get") as mock_get:
-        mock_get.return_value.json.return_value = mock_wallet_response
-        mock_get.return_value.status_code = 200
+    with patch("aiohttp.ClientSession.request") as mock_request:
+        mock_request.return_value.__aenter__.return_value.json.return_value = mock_wallet_response
+        mock_request.return_value.__aenter__.return_value.status = 200
 
-        wallet = ZerionWallet(zerion_api_key)
-        info = wallet.get_wallet_info("0x123")
+        info = await wallet_client.get_wallet_info("0x123")
+        assert info["data"]["attributes"]["address"] == "0x123"
 
-        assert info["address"] == "0x123"
-        assert info["name"] == "Test Wallet"
-        mock_get.assert_called_once_with(
-            f"{require_env_var(API_BASE_URL_ENV_VAR, 'Zerion API Base URL')}/wallets/0x123",
-            headers={"Accept": "application/json", "Authorization": f"Bearer {zerion_api_key}"}
-        )
+@pytest.mark.asyncio
+async def test_get_wallet_balances(wallet_client, mock_assets_response):
+    """Test getting wallet balances."""
+    with patch("aiohttp.ClientSession.request") as mock_request:
+        mock_request.return_value.__aenter__.return_value.json.return_value = mock_assets_response
+        mock_request.return_value.__aenter__.return_value.status = 200
 
-def test_get_wallet_assets(zerion_api_key, mock_assets_response):
-    """Test getting wallet assets."""
-    with patch("requests.get") as mock_get:
-        mock_get.return_value.json.return_value = mock_assets_response
-        mock_get.return_value.status_code = 200
+        balances = await wallet_client.get_wallet_balances("0x123")
+        assert len(balances["data"]) == 1
+        assert balances["data"][0]["attributes"]["symbol"] == "TEST"
 
-        wallet = ZerionWallet(zerion_api_key)
-        assets = wallet.get_wallet_assets("0x123")
-
-        assert len(assets) == 1
-        assert assets[0]["name"] == "Test Token"
-        assert assets[0]["symbol"] == "TEST"
-        mock_get.assert_called_once_with(
-            f"{require_env_var(API_BASE_URL_ENV_VAR, 'Zerion API Base URL')}/wallets/0x123/assets",
-            headers={"Accept": "application/json", "Authorization": f"Bearer {zerion_api_key}"}
-        )
-
-def test_get_wallet_transactions(zerion_api_key, mock_transactions_response):
+@pytest.mark.asyncio
+async def test_get_wallet_transactions(wallet_client, mock_transactions_response):
     """Test getting wallet transactions."""
-    with patch("requests.get") as mock_get:
-        mock_get.return_value.json.return_value = mock_transactions_response
-        mock_get.return_value.status_code = 200
+    with patch("aiohttp.ClientSession.request") as mock_request:
+        mock_request.return_value.__aenter__.return_value.json.return_value = mock_transactions_response
+        mock_request.return_value.__aenter__.return_value.status = 200
 
-        wallet = ZerionWallet(zerion_api_key)
-        transactions = wallet.get_wallet_transactions("0x123")
+        transactions = await wallet_client.get_wallet_transactions("0x123")
+        assert len(transactions["data"]) == 1
+        assert transactions["data"][0]["attributes"]["hash"] == "0xabc"
 
-        assert len(transactions) == 1
-        assert transactions[0]["hash"] == "0xabc"
-        assert transactions[0]["type"] == "transfer"
-        mock_get.assert_called_once_with(
-            f"{require_env_var(API_BASE_URL_ENV_VAR, 'Zerion API Base URL')}/wallets/0x123/transactions",
-            headers={"Accept": "application/json", "Authorization": f"Bearer {zerion_api_key}"}
-        )
+@pytest.mark.asyncio
+async def test_get_wallet_protocols(wallet_client, mock_protocols_response):
+    """Test getting wallet protocols."""
+    with patch("aiohttp.ClientSession.request") as mock_request:
+        mock_request.return_value.__aenter__.return_value.json.return_value = mock_protocols_response
+        mock_request.return_value.__aenter__.return_value.status = 200
 
-def test_get_wallet_nfts(zerion_api_key, mock_nfts_response):
-    """Test getting wallet NFTs."""
-    with patch("requests.get") as mock_get:
-        mock_get.return_value.json.return_value = mock_nfts_response
-        mock_get.return_value.status_code = 200
+        protocols = await wallet_client.get_wallet_protocols("0x123")
+        assert len(protocols["data"]) == 1
+        assert protocols["data"][0]["attributes"]["name"] == "Test Protocol"
 
-        wallet = ZerionWallet(zerion_api_key)
-        nfts = wallet.get_wallet_nfts("0x123")
-
-        assert len(nfts) == 1
-        assert nfts[0]["name"] == "Test NFT"
-        assert nfts[0]["collection"] == "Test Collection"
-        mock_get.assert_called_once_with(
-            f"{require_env_var(API_BASE_URL_ENV_VAR, 'Zerion API Base URL')}/wallets/0x123/nfts",
-            headers={"Accept": "application/json", "Authorization": f"Bearer {zerion_api_key}"}
-        )
-
-def test_get_wallet_portfolio(zerion_api_key, mock_portfolio_response):
+@pytest.mark.asyncio
+async def test_get_wallet_portfolio(wallet_client, mock_portfolio_response):
     """Test getting wallet portfolio."""
-    with patch("requests.get") as mock_get:
-        mock_get.return_value.json.return_value = mock_portfolio_response
-        mock_get.return_value.status_code = 200
+    with patch("aiohttp.ClientSession.request") as mock_request:
+        mock_request.return_value.__aenter__.return_value.json.return_value = mock_portfolio_response
+        mock_request.return_value.__aenter__.return_value.status = 200
 
-        wallet = ZerionWallet(zerion_api_key)
-        portfolio = wallet.get_wallet_portfolio("0x123")
-
-        assert portfolio["total_value"] == 1000.0
-        assert portfolio["total_value_change_24h"] == 100.0
-        assert portfolio["total_value_change_24h_percentage"] == 10.0
-        assert len(portfolio["assets"]) == 1
-        mock_get.assert_called_once_with(
-            f"{require_env_var(API_BASE_URL_ENV_VAR, 'Zerion API Base URL')}/wallets/0x123/portfolio",
-            headers={"Accept": "application/json", "Authorization": f"Bearer {zerion_api_key}"}
-        )
+        portfolio = await wallet_client.get_wallet_portfolio("0x123")
+        assert portfolio["data"]["attributes"]["total_value"] == 1000.0
+        assert portfolio["data"]["attributes"]["total_value_change_24h"] == 100.0

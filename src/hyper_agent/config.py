@@ -38,3 +38,14 @@ def require_env_var(key: str, service: str) -> str:
             "environment variable or add it to your .env file."
         )
     return value
+
+def get_api_key(key_name: str) -> Optional[str]:
+    """Get API key from environment variables."""
+    return os.getenv(key_name)
+
+def require_api_key(key_name: str) -> str:
+    """Get API key from environment variables or raise an error."""
+    api_key = get_api_key(key_name)
+    if not api_key:
+        raise ValueError(f"Missing required environment variable: {key_name}")
+    return api_key

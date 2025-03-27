@@ -3,28 +3,36 @@ name = "hyper-agent"
 version = "0.1.0"
 description = "A Python SDK for interacting with Zerion API"
 authors = [
-    { name = "Tu Nguyen", email = "tucq88@gmail.com" }
+    { name = "Tu Chu", email = "tucq88@gmail.com" }
 ]
 dependencies = [
     "aiohttp>=3.8.0",
-    "click>=8.0.0",
     "python-dotenv>=0.19.0",
+    "typing-extensions>=4.0.0",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
 license = { text = "MIT" }
 
-[project.scripts]
-zerion = "hyper_agent.zerion.cli:zerion"
-
 [project.optional-dependencies]
 test = [
     "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.18.0",
+    "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
-    "responses>=0.24.0",
+    "pytest-aiohttp>=1.0.0"
 ]
+cli = [
+    "click>=8.0.0",
+    "rich>=10.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/tucq88/hyper-agent"
+Repository = "https://github.com/tucq88/hyper-agent.git"
+
+[project.scripts]
+zerion = "hyper_agent.zerion.cli:cli"
 
 [build-system]
 requires = ["hatchling"]
@@ -37,5 +45,5 @@ target-version = "py38"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=src/hyper_agent --cov-report=term-missing"
+addopts = "-v --cov=src --cov-report=term-missing"
 asyncio_mode = "auto"

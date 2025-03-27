@@ -1,133 +1,142 @@
 """Tests for the Zerion protocol functionality."""
 import pytest
-import responses
+from unittest.mock import patch
+
+from hyper_agent.zerion.protocol import ZerionProtocol
 from hyper_agent.zerion.client import ZerionClient
 from hyper_agent.zerion.constants import API_BASE_URL_ENV_VAR
 from hyper_agent.config import require_env_var
 
+
+@pytest.fixture
+def protocol_client(zerion_api_key):
+    """Create a ZerionProtocol instance."""
+    client = ZerionClient(api_key=zerion_api_key)
+    return ZerionProtocol(client)
+
+
+@pytest.fixture
+def mock_protocol_info():
+    """Mock response for protocol info."""
+    return {
+        "data": {
+            "type": "protocol",
+            "id": "uniswap-v3",
+            "attributes": {
+                "name": "Uniswap V3",
+                "description": "Decentralized exchange protocol",
+                "tvl": "1000000000",
+                "chain": "ethereum"
+            }
+        }
+    }
+
+
+@pytest.fixture
+def mock_protocol_pools():
+    """Mock response for protocol pools."""
+    return {
+        "data": [
+            {
+                "type": "pool",
+                "id": "0x123...",
+                "attributes": {
+                    "name": "ETH/USDC",
+                    "tvl": "1000000",
+                    "volume_24h": "500000",
+                    "fee": "0.003"
+                }
+            }
+        ]
+    }
+
+
+@pytest.fixture
+def mock_protocol_tokens():
+    """Mock response for protocol tokens."""
+    return {
+        "data": [
+            {
+                "type": "token",
+                "id": "0x123...",
+                "attributes": {
+                    "name": "ETH",
+                    "symbol": "ETH",
+                    "price": "3000.00",
+                    "volume_24h": "1000000"
+                }
+            }
+        ]
+    }
+
+
+@pytest.fixture
+def mock_protocol_stats():
+    """Mock response for protocol stats."""
+    return {
+        "data": {
+            "type": "stats",
+            "attributes": {
+                "tvl": "1000000000",
+                "volume_24h": "50000000",
+                "fees_24h": "150000",
+                "users_24h": 1000
+            }
+        }
+    }
+
+
 @pytest.mark.asyncio
-async def test_get_protocol_info(mock_responses: responses.RequestsMock, zerion_api_key: str):
+async def test_get_protocol_info(protocol_client, mock_protocol_info):
     """Test getting protocol information."""
-    client = ZerionClient(api_key=zerion_api_key)
-    protocol_id = "uniswap-v3"
+    with patch("aiohttp.ClientSession.request") as mock_request:
+        mock_request.return_value.__aenter__.return_value.json.return_value = mock_protocol_info
+        mock_request.return_value.__aenter__.return_value.status = 200
 
-    # Mock protocol info response
-    mock_responses.add(
-        responses.GET,
-        f"{require_env_var(API_BASE_URL_ENV_VAR, 'Zerion API Base URL')}/protocols/{protocol_id}",
-        json={
-            "data": {
-                "type": "protocol",
-                "id": protocol_id,
-                "attributes": {
-                    "name": "Uniswap V3",
-                    "description": "Decentralized exchange protocol",
-                    "tvl": "1000000000",
-                    "chain": "ethereum"
-                }
-            }
-        },
-        status=200
-    )
+        protocol_info = await protocol_client.get_protocol_info("uniswap-v3")
+        assert protocol_info["data"]["type"] == "protocol"
+        assert protocol_info["data"]["attributes"]["name"] == "Uniswap V3"
+        assert protocol_info["data"]["attributes"]["tvl"] == "1000000000"
 
-    protocol_info = await client.get_protocol_info(protocol_id)
-    assert protocol_info["type"] == "protocol"
-    assert protocol_info["attributes"]["name"] == "Uniswap V3"
-    assert protocol_info["attributes"]["tvl"] == "1000000000"
 
 @pytest.mark.asyncio
-async def test_get_protocol_pools(mock_responses: responses.RequestsMock, zerion_api_key: str):
+async def test_get_protocol_pools(protocol_client, mock_protocol_pools):
     """Test getting protocol pools."""
-    client = ZerionClient(api_key=zerion_api_key)
-    protocol_id = "uniswap-v3"
+    with patch("aiohttp.ClientSession.request") as mock_request:
+        mock_request.return_value.__aenter__.return_value.json.return_value = mock_protocol_pools
+        mock_request.return_value.__aenter__.return_value.status = 200
 
-    # Mock protocol pools response
-    mock_responses.add(
-        responses.GET,
-        f"{require_env_var(API_BASE_URL_ENV_VAR, 'Zerion API Base URL')}/protocols/{protocol_id}/pools",
-        json={
-            "data": [
-                {
-                    "type": "pool",
-                    "id": "0x123...",
-                    "attributes": {
-                        "name": "ETH/USDC",
-                        "tvl": "1000000",
-                        "volume_24h": "500000",
-                        "fee": "0.003"
-                    }
-                }
-            ]
-        },
-        status=200
-    )
+        pools = await protocol_client.get_protocol_pools("uniswap-v3")
+        assert len(pools["data"]) == 1
+        assert pools["data"][0]["type"] == "pool"
+        assert pools["data"][0]["attributes"]["name"] == "ETH/USDC"
+        assert pools["data"][0]["attributes"]["fee"] == "0.003"
 
-    pools = await client.get_protocol_pools(protocol_id)
-    assert len(pools) == 1
-    assert pools[0]["type"] == "pool"
-    assert pools[0]["attributes"]["name"] == "ETH/USDC"
-    assert pools[0]["attributes"]["fee"] == "0.003"
 
 @pytest.mark.asyncio
-async def test_get_protocol_tokens(mock_responses: responses.RequestsMock, zerion_api_key: str):
+async def test_get_protocol_tokens(protocol_client, mock_protocol_tokens):
     """Test getting protocol tokens."""
-    client = ZerionClient(api_key=zerion_api_key)
-    protocol_id = "uniswap-v3"
+    with patch("aiohttp.ClientSession.request") as mock_request:
+        mock_request.return_value.__aenter__.return_value.json.return_value = mock_protocol_tokens
+        mock_request.return_value.__aenter__.return_value.status = 200
 
-    # Mock protocol tokens response
-    mock_responses.add(
-        responses.GET,
-        f"{require_env_var(API_BASE_URL_ENV_VAR, 'Zerion API Base URL')}/protocols/{protocol_id}/tokens",
-        json={
-            "data": [
-                {
-                    "type": "token",
-                    "id": "0x123...",
-                    "attributes": {
-                        "name": "ETH",
-                        "symbol": "ETH",
-                        "price": "3000.00",
-                        "volume_24h": "1000000"
-                    }
-                }
-            ]
-        },
-        status=200
-    )
+        tokens = await protocol_client.get_protocol_tokens("uniswap-v3")
+        assert len(tokens["data"]) == 1
+        assert tokens["data"][0]["type"] == "token"
+        assert tokens["data"][0]["attributes"]["symbol"] == "ETH"
+        assert tokens["data"][0]["attributes"]["price"] == "3000.00"
 
-    tokens = await client.get_protocol_tokens(protocol_id)
-    assert len(tokens) == 1
-    assert tokens[0]["type"] == "token"
-    assert tokens[0]["attributes"]["symbol"] == "ETH"
-    assert tokens[0]["attributes"]["price"] == "3000.00"
 
 @pytest.mark.asyncio
-async def test_get_protocol_stats(mock_responses: responses.RequestsMock, zerion_api_key: str):
+async def test_get_protocol_stats(protocol_client, mock_protocol_stats):
     """Test getting protocol statistics."""
-    client = ZerionClient(api_key=zerion_api_key)
-    protocol_id = "uniswap-v3"
+    with patch("aiohttp.ClientSession.request") as mock_request:
+        mock_request.return_value.__aenter__.return_value.json.return_value = mock_protocol_stats
+        mock_request.return_value.__aenter__.return_value.status = 200
 
-    # Mock protocol stats response
-    mock_responses.add(
-        responses.GET,
-        f"{require_env_var(API_BASE_URL_ENV_VAR, 'Zerion API Base URL')}/protocols/{protocol_id}/stats",
-        json={
-            "data": {
-                "type": "stats",
-                "attributes": {
-                    "tvl": "1000000000",
-                    "volume_24h": "50000000",
-                    "fees_24h": "150000",
-                    "users_24h": 1000
-                }
-            }
-        },
-        status=200
-    )
-
-    stats = await client.get_protocol_stats(protocol_id)
-    assert stats["type"] == "stats"
-    assert stats["attributes"]["tvl"] == "1000000000"
-    assert stats["attributes"]["volume_24h"] == "50000000"
-    assert stats["attributes"]["fees_24h"] == "150000"
-    assert stats["attributes"]["users_24h"] == 1000
+        stats = await protocol_client.get_protocol_stats("uniswap-v3")
+        assert stats["data"]["type"] == "stats"
+        assert stats["data"]["attributes"]["tvl"] == "1000000000"
+        assert stats["data"]["attributes"]["volume_24h"] == "50000000"
+        assert stats["data"]["attributes"]["fees_24h"] == "150000"
+        assert stats["data"]["attributes"]["users_24h"] == 1000
